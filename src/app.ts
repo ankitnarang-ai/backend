@@ -22,4 +22,9 @@ app.use(express.static("public"));
 // Middleware to parse cookies
 app.use(cookieParser());
 
+// best practice to import it afterall the middleware for request
+import userRouter from "./routes/user.routes"
+//best practice to define api and version
+app.use("/api/v1/users",userRouter)
+
 export { app };

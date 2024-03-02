@@ -1,7 +1,8 @@
 import mongoose, { Schema } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { NextFunction } from "express";
+// import { userValidationSchema } from "../validate/user.validate";
+import { ApiError } from "../utils/ApiError";
 
 interface IUser extends Document {
   username: string;
@@ -62,6 +63,16 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
   },
   { timestamps: true }
 );
+//Define pre hook to validate user details before saving it to the database
+// userSchema.pre<IUser>("save", async function (next) {
+//   try {
+//     const user: any = this; // Cast this to any
+//     await userValidationSchema.validateAsync(user.toObject());
+//     next();
+//   } catch (error) {
+//     next(error);
+//   }
+// });
 
 // Define pre-save hook to hash password before saving
 userSchema.pre('save', async function (next) {
@@ -73,6 +84,7 @@ userSchema.pre('save', async function (next) {
     this.password = hashedPassword;
     next();
   } catch (error) {
+    throw new ApiError(422,"Joi validation failed ");
     next(error);
   }
 });

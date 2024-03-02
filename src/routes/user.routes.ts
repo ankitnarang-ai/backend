@@ -1,0 +1,22 @@
+import {Router} from "express";
+import { registerUser } from "../controllers/user.controller";
+import { upload } from "../middlewares/multer";
+
+const router = Router()
+
+router.route('/register').post( // Inject middleware just before method ( registerUser )
+    upload.fields([
+        {
+            name : "avatar",
+            maxCount:  1
+        },
+        {
+            name : "coverImage",
+            maxCount : 1
+        }
+    ]),
+    registerUser
+    )
+
+
+export default router
