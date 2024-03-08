@@ -12,4 +12,6 @@ class ApiResponse<T> {
     }
 }
 
+export {ApiResponse}
+
 // use in standardization in response in apis 

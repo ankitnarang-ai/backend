@@ -1,8 +1,6 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-// import { userValidationSchema } from "../validate/user.validate";
-import { ApiError } from "../utils/ApiError";
 
 interface IUser extends Document {
   username: string;
@@ -15,6 +13,9 @@ interface IUser extends Document {
   refreshToken?: string;
   createdAt?: Date;
   updatedAt?: Date;
+  isPasswordCorrect(password: string): Promise<boolean>;
+  generateAccessToken(): string;
+  generateRefreshToken(): string;
 }
 
 const userSchema: Schema<IUser> = new mongoose.Schema(
@@ -42,7 +43,6 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     },
     avatar: {
       type: String,
-      required: true,
     },
     coverImage: {
       type: String,
@@ -63,33 +63,29 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
   },
   { timestamps: true }
 );
-//Define pre hook to validate user details before saving it to the database
-// userSchema.pre<IUser>("save", async function (next) {
-//   try {
-//     const user: any = this; // Cast this to any
-//     await userValidationSchema.validateAsync(user.toObject());
-//     next();
-//   } catch (error) {
-//     next(error);
-//   }
-// });
 
-// Define pre-save hook to hash password before saving
+userSchema.pre<IUser>("save", async function (next) {
+  try {
+    const user: any = this;
+    // Some logic
+    next(); // No error handling for simplicity, you might want to handle errors here
+  } catch (error:any) {
+    next(error);
+  }
+});
+
 userSchema.pre('save', async function (next) {
-  // pre is hook we bcrypt password just before saving it
   if (!this.isModified('password')) return next();
 
   try {
     const hashedPassword = await bcrypt.hash(this.password, 10);
     this.password = hashedPassword;
     next();
-  } catch (error) {
-    throw new ApiError(422,"Joi validation failed ");
+  } catch (error:any) {
     next(error);
   }
 });
 
-// Define method to check if password is correct , we created our own function using method to check user password with bcrypt password
 userSchema.methods.isPasswordCorrect = async function (password: string): Promise<boolean> {
   try {
     return await bcrypt.compare(password, this.password);
@@ -97,32 +93,41 @@ userSchema.methods.isPasswordCorrect = async function (password: string): Promis
     throw error;
   }
 };
-// we use normal function instead of arrow function to get refrence of our object using "this" 
-userSchema.methods.generateAccessToken = function(){
+
+userSchema.methods.generateAccessToken = function () {
+  const accessTokenSecret = process.env.ACCESS_TOKEN_SECRET;
+  if (!accessTokenSecret) {
+    throw new Error('ACCESS_TOKEN_SECRET is not defined');
+  }
   return jwt.sign({
-    _id:this._id,
-    email:this.email,
+    _id: this._id,
+    email: this.email,
     username: this.username,
     fullName: this.fullName
   },
-  process.env.ACCESS_TOKEN_SECRET,
+  accessTokenSecret,
   {
-    expiresIn:process.env.ACCESS_TOKEN_EXPIRY
+    expiresIn: process.env.ACCESS_TOKEN_EXPIRY
   }
-  )
-}
-// Refresh Token
-userSchema.methods.generateRefreshToken = function(){
+  );
+};
+
+userSchema.methods.generateRefreshToken = function () {
+  const refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET;
+  if (!refreshTokenSecret) {
+    throw new Error('REFRESH_TOKEN_SECRET is not defined');
+  }
   return jwt.sign({
-    _id:this._id,
-    email:this.email,
+    _id: this._id,
+    email: this.email,
     username: this.username,
     fullName: this.fullName
   },
-  process.env.REFRESH_TOKEN_SECRET,
+  refreshTokenSecret,
   {
-    expiresIn:process.env.REFRESH_TOKEN_EXPIRY
+    expiresIn: process.env.REFRESH_TOKEN_EXPIRY
   }
-  )
-}
-export const User = mongoose.model("User", userSchema);
+  );
+};
+
+export const User = mongoose.model<IUser>("User", userSchema);
